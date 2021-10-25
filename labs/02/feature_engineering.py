@@ -8,9 +8,11 @@ import sklearn.model_selection
 import sklearn.pipeline
 import sklearn.preprocessing
 
+# 0332e602-165f-11e8-9de3-00505601122b
+
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
-parser.add_argument("--dataset", default="diabetes", type=str, help="Standard sklearn dataset to load")
+parser.add_argument("--dataset", default="wine", type=str, help="Standard sklearn dataset to load")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 parser.add_argument("--test_size", default=0.5, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
@@ -22,6 +24,9 @@ def main(args: argparse.Namespace) -> tuple[np.ndarray, np.ndarray]:
     # TODO: Split the dataset into a train set and a test set.
     # Use `sklearn.model_selection.train_test_split` method call, passing
     # arguments `test_size=args.test_size, random_state=args.seed`.
+    train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(dataset.data, dataset.target,
+                                                                                    test_size=args.test_size,
+                                                                                    random_state=args.seed)
 
     # TODO: Process the input columns in the following way:
     #
@@ -39,21 +44,41 @@ def main(args: argparse.Namespace) -> tuple[np.ndarray, np.ndarray]:
     # In the output, there should be first all the one-hot categorical features,
     # and then the real-valued features. To process different dataset columns
     # differently, you can use `sklearn.compose.ColumnTransformer`.
+    def column_processing(data):
+        is_integer_col = []
+        not_integer_col = []
+        for i in range(data.shape[1]):
+            if np.all(np.equal(np.mod(data[:,i], 1), 0)):
+                is_integer_col.append(i)
+                
+            else:
+                not_integer_col.append(i)
+        integer_encoder = sklearn.preprocessing.OneHotEncoder(sparse=False, handle_unknown='ignore')
+        non_integer_scaler = sklearn.preprocessing.StandardScaler()
+        megatron = sklearn.compose.ColumnTransformer(transformers=[("integer_encoder", integer_encoder, is_integer_col), ("non_integer_scaler", non_integer_scaler, not_integer_col)])
+        processed_data = megatron.fit_transform(data)
+        return(processed_data)
+
 
     # TODO: To the current features, append polynomial features of order 2.
     # If the input values are [a, b, c, d], you should append
     # [a^2, ab, ac, ad, b^2, bc, bd, c^2, cd, d^2]. You can generate such polynomial
     # features either manually, or using
     # `sklearn.preprocessing.PolynomialFeatures(2, include_bias=False)`.
-
+    def add_poly_features(data):
+        processed_data = sklearn.preprocessing.PolynomialFeatures(2, include_bias=False).fit_transform(data)
+        return(processed_data)
     # TODO: You can wrap all the feature processing steps into one transformer
     # by using `sklearn.pipeline.Pipeline`. Although not strictly needed, it is
     # usually comfortable.
-
+    def feature_pipeline(data):
+        processed_data = sklearn.pipeline.Pipeline([("transformer", sklearn.preprocessing.FunctionTransformer(column_processing)),("poly", sklearn.preprocessing.FunctionTransformer(add_poly_features))]).transform(data)
+        return(processed_data)
     # TODO: Fit the feature processing steps on the training data.
     # Then transform the training data into `train_data` (you can do both these
     # steps using `fit_transform`), and transform testing data to `test_data`.
-
+    train_data = feature_pipeline(train_data)
+    test_data = feature_pipeline(test_data)
     return train_data[:5], test_data[:5]
 
 

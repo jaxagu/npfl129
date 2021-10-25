@@ -6,11 +6,13 @@ import sklearn.linear_model
 import sklearn.metrics
 import sklearn.model_selection
 
+# 0332e602-165f-11e8-9de3-00505601122b
+
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
 parser.add_argument("--data_size", default=40, type=int, help="Data size")
 parser.add_argument("--plot", default=False, const=True, nargs="?", type=str, help="Plot the predictions")
-parser.add_argument("--range", default=3, type=int, help="Feature order range")
+parser.add_argument("--range", default=6, type=int, help="Feature order range")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 parser.add_argument("--test_size", default=0.5, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
@@ -22,24 +24,28 @@ def main(args: argparse.Namespace) -> list[float]:
     ys = np.sin(xs) + np.random.RandomState(args.seed).normal(0, 0.2, size=args.data_size)
 
     rmses = []
+    X = np.ones(len(xs))
     for order in range(1, args.range + 1):
         # TODO: Create features (x^1, x^2, ..., x^order), preferably in this ordering.
         # Note you can just append x^order to the features from the previous iteration.
-
+        X = np.column_stack((X, np.power(xs, order)))
         # TODO: Split the data into a train set and a test set.
         # Use `sklearn.model_selection.train_test_split` method call, passing
         # arguments `test_size=args.test_size, random_state=args.seed`.
+        train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(X, ys,
+                                                                                    test_size=args.test_size,
+                                                                                    random_state=args.seed)
 
         # TODO: Fit a linear regression model using `sklearn.linear_model.LinearRegression`;
         # consult documentation and see especially the `fit` method.
-        model = None
+        model = sklearn.linear_model.LinearRegression().fit(train_data,train_target)
 
         # TODO: Predict targets on the test set using the `predict` method of the trained model.
-
+        model.predict(test_data)
         # TODO: Compute root mean square error on the test set predictions.
         # You can either do it manually or look at `sklearn.metrics.mean_squared_error` method
         # and its `squared` parameter.
-        rmse = None
+        rmse = np.sqrt(sklearn.metrics.mean_squared_error(model.predict(test_data),test_target))
 
         rmses.append(rmse)
 
