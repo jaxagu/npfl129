@@ -14,12 +14,12 @@ parser.add_argument("--data_size", default=100, type=int, help="Data size")
 parser.add_argument("--epochs", default=50, type=int, help="Number of SGD iterations over the data")
 parser.add_argument("--l2", default=0.0, type=float, help="L2 regularization strength")
 parser.add_argument("--learning_rate", default=0.01, type=float, help="Learning rate")
-parser.add_argument("--plot", default=False, const=True, nargs="?", type=str, help="Plot the predictions")
+parser.add_argument("--plot", default=True, const=True, nargs="?", type=str, help="Plot the predictions")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 parser.add_argument("--test_size", default=0.5, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
 # If you add more arguments, ReCodEx will keep them with your default values.
-
+# 0332e602-165f-11e8-9de3-00505601122b
 def main(args: argparse.Namespace) -> tuple[float, float]:
     # Create a random generator with a given seed
     generator = np.random.RandomState(args.seed)
@@ -28,12 +28,13 @@ def main(args: argparse.Namespace) -> tuple[float, float]:
     data, target = sklearn.datasets.make_regression(n_samples=args.data_size, random_state=args.seed)
 
     # TODO: Append a constant feature with value 1 to the end of every input data
-
+    data = np.append(data, np.ones([data.shape[0], 1]), axis=1)
     # TODO: Split the dataset into a train set and a test set.
     # Use `sklearn.model_selection.train_test_split` method call, passing
     # arguments `test_size=args.test_size, random_state=args.seed`.
-    train_data, test_data, train_target, test_target = None, None, None, None
-
+    train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(data, target,
+                                                                                    test_size=args.test_size,
+                                                                                    random_state=args.seed)
     # Generate initial linear regression weights
     weights = generator.uniform(size=train_data.shape[1])
 
@@ -47,12 +48,17 @@ def main(args: argparse.Namespace) -> tuple[float, float]:
         # and the SGD update is
         #   weights = weights - args.learning_rate * (gradient + args.l2 * weights)`.
         # You can assume that `args.batch_size` exactly divides `train_data.shape[0]`.
-
+        for i in range(int(train_data.shape[0]/args.batch_size)) :
+            index = permutation[np.arange(i*args.batch_size,(i+1)*args.batch_size)]
+            gradient = np.dot((np.dot(train_data[index, :], weights) - train_target[index]), train_data[index, :])/args.batch_size
+            weights = weights - args.learning_rate * (gradient + args.l2*weights)
         # TODO: Append current RMSE on train/test to train_rmses/test_rmses.
-
+        train_rmses.append( np.sqrt(sklearn.metrics.mean_squared_error(np.dot(train_data, weights), train_target)) )
+        test_rmses.append( np.sqrt(sklearn.metrics.mean_squared_error(np.dot(test_data, weights), test_target)) )
     # TODO: Compute into `explicit_rmse` test data RMSE when fitting
     # `sklearn.linear_model.LinearRegression` on train_data (ignoring args.l2).
-    explicit_rmse = None
+    model = sklearn.linear_model.LinearRegression().fit(train_data,train_target)
+    explicit_rmse = np.sqrt(sklearn.metrics.mean_squared_error(model.predict(test_data), test_target))
 
     if args.plot:
         import matplotlib.pyplot as plt

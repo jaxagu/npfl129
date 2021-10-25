@@ -6,10 +6,10 @@ import sklearn.datasets
 import sklearn.linear_model
 import sklearn.metrics
 import sklearn.model_selection
-
+# 0332e602-165f-11e8-9de3-00505601122b
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
-parser.add_argument("--plot", default=False, const=True, nargs="?", type=str, help="Plot the predictions")
+parser.add_argument("--plot", default=True, const=True, nargs="?", type=str, help="Plot the predictions")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=13, type=int, help="Random seed")
 parser.add_argument("--test_size", default=0.5, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
@@ -22,7 +22,9 @@ def main(args: argparse.Namespace) -> tuple[float, float]:
     # TODO: Split the dataset into a train set and a test set.
     # Use `sklearn.model_selection.train_test_split` method call, passing
     # arguments `test_size=args.test_size, random_state=args.seed`.
-
+    train_data, test_data, train_target, test_target = sklearn.model_selection.train_test_split(dataset.data, dataset.target,
+                                                                                    test_size=args.test_size,
+                                                                                    random_state=args.seed)
     lambdas = np.geomspace(0.01, 10, num=500)
     # TODO: Using `sklearn.linear_model.Ridge`, fit the train set using
     # L2 regularization, employing above defined lambdas.
@@ -30,7 +32,15 @@ def main(args: argparse.Namespace) -> tuple[float, float]:
     # lambda producing lowest RMSE and the corresponding RMSE.
     best_lambda = None
     best_rmse = None
-
+    rmses = []
+    for lmbd in lambdas:
+        model = sklearn.linear_model.Ridge(alpha=lmbd).fit(train_data, train_target)
+        rmse = np.sqrt(sklearn.metrics.mean_squared_error(model.predict(test_data),test_target))
+        rmses.append(rmse)
+        if best_rmse is None or best_rmse > rmse:
+            best_lambda = lmbd
+            best_rmse = rmse
+    
     if args.plot:
         # This block is not required to pass in ReCodEx, however, it is useful
         # to learn to visualize the results.

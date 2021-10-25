@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from math import e
 
 import numpy as np
 import sklearn.compose
@@ -12,7 +13,7 @@ import sklearn.preprocessing
 
 parser = argparse.ArgumentParser()
 # These arguments will be set appropriately by ReCodEx, even if you change them.
-parser.add_argument("--dataset", default="wine", type=str, help="Standard sklearn dataset to load")
+parser.add_argument("--dataset", default="diabetes", type=str, help="Standard sklearn dataset to load")
 parser.add_argument("--recodex", default=False, action="store_true", help="Running in ReCodEx")
 parser.add_argument("--seed", default=42, type=int, help="Random seed")
 parser.add_argument("--test_size", default=0.5, type=lambda x:int(x) if x.isdigit() else float(x), help="Test set size")
@@ -56,8 +57,8 @@ def main(args: argparse.Namespace) -> tuple[np.ndarray, np.ndarray]:
         integer_encoder = sklearn.preprocessing.OneHotEncoder(sparse=False, handle_unknown='ignore')
         non_integer_scaler = sklearn.preprocessing.StandardScaler()
         megatron = sklearn.compose.ColumnTransformer(transformers=[("integer_encoder", integer_encoder, is_integer_col), ("non_integer_scaler", non_integer_scaler, not_integer_col)])
-        processed_data = megatron.fit_transform(data)
-        return(processed_data)
+        processed_data = megatron.fit(train_data).transform(data)
+        return processed_data
 
 
     # TODO: To the current features, append polynomial features of order 2.
@@ -67,18 +68,19 @@ def main(args: argparse.Namespace) -> tuple[np.ndarray, np.ndarray]:
     # `sklearn.preprocessing.PolynomialFeatures(2, include_bias=False)`.
     def add_poly_features(data):
         processed_data = sklearn.preprocessing.PolynomialFeatures(2, include_bias=False).fit_transform(data)
-        return(processed_data)
+        return processed_data
     # TODO: You can wrap all the feature processing steps into one transformer
     # by using `sklearn.pipeline.Pipeline`. Although not strictly needed, it is
     # usually comfortable.
-    def feature_pipeline(data):
-        processed_data = sklearn.pipeline.Pipeline([("transformer", sklearn.preprocessing.FunctionTransformer(column_processing)),("poly", sklearn.preprocessing.FunctionTransformer(add_poly_features))]).transform(data)
-        return(processed_data)
+ 
+    feature_pipeline = sklearn.pipeline.Pipeline([("transformer", sklearn.preprocessing.FunctionTransformer(column_processing)),("poly", sklearn.preprocessing.FunctionTransformer(add_poly_features))])
+
     # TODO: Fit the feature processing steps on the training data.
     # Then transform the training data into `train_data` (you can do both these
     # steps using `fit_transform`), and transform testing data to `test_data`.
-    train_data = feature_pipeline(train_data)
-    test_data = feature_pipeline(test_data)
+    
+    test_data = feature_pipeline.fit(train_data).transform(test_data)
+    train_data = feature_pipeline.fit_transform(train_data)
     return train_data[:5], test_data[:5]
 
 
